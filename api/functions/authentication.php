@@ -59,3 +59,75 @@ $app->post('/verifyUser', function() use($app){
     }
 });
 
+$app->post('/createTask', function() use($app){
+
+    $response=[];
+    $r = json_decode($app->request->getBody());
+    verifyRequiredParams(array('task', 'usr_tsk_id'), $r->task);
+    $db = new DbHandler();
+    $task = $db->purify($r->task->task);
+    $usr_tsk_id = $db->purify($r->task->usr_tsk_id);
+    $created_at=date("Y-m-d H:i:s");
+
+    $isTaskExist = $db->getOneRecord("SELECT task FROM tasks WHERE task='$task'");
+
+    if(!$isTaskExist){
+        $result=$db->insertToTable(
+            [ $task, $usr_tsk_id, $created_at],
+            ['task', 'usr_tsk_id','created_at'], /*column names - array*/
+            "tasks" /*table name - string*/
+        );
+        if($result>0){
+        $response['status'] = 'success';
+        $response['message'] = "Task Creation Successful";
+        echoResponse(200, $response);
+    }else{
+        $response['status'] = "error";
+        $response['message'] = 'Failed to create task';
+        echoResponse(201, $response);
+    }
+    }else{
+        $response['status'] = "error";
+        $response['message'] = 'Task already Exist';
+        echoResponse(201, $response);
+    }
+});
+
+$app->get('/getUserList', function() use($app){
+    $response = [];
+    $db = new DbHandler();
+
+    $users = $db->getRecordSet("SELECT * FROM users ORDER BY user_id");
+    if($users){
+        $response['users'] = $users;
+        $response['status'] = "success";
+        $response['message'] = Count($users)." User(s) where found";
+        echoResponse(200, $response);
+    }else{
+        $response['status'] = "error";
+        $response['message'] = 'No User was found';
+        echoResponse(201, $response);
+    }
+});
+
+$app->get('/getUserTasks', function() use($app){
+    $response = [];
+    $db = new DbHandler();
+
+    $id = $db->purify($app->request->get('id'));
+
+
+    $userTasks = $db->getRecordset("SELECT name, task FROM tasks LEFT JOIN users ON user_id=usr_tsk_id WHERE usr_tsk_id='$id' ");
+
+    if($userTasks){
+        $response['user_tasks'] = $userTasks;
+        $response['status'] = 'success';
+        $response['message'] = Count($userTasks)." User task(s) where found";
+        echoResponse(200,$response);
+    }else{
+        $response['status'] = "error";
+        $response['message'] = 'No User Task was found';
+        echoResponse(201, $response);
+    }
+});
+
